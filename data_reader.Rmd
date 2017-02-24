@@ -1,0 +1,20 @@
+---
+title: "Data Reader"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+Using readxl to read Excel XLSX file
+
+```{r}
+library(readxl)
+dt<-read_excel('hscore/amtvideos2016.xlsx')
+summary(dt)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).

@@ -5,16 +5,88 @@ output: html_notebook
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(magrittr)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
 ```
 
 Using readxl to read Excel XLSX file
 
-```{r}
+```{r readxl}
 library(readxl)
 dt<-read_excel('hscore/amtvideos2016.xlsx')
 summary(dt)
+
+
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+Ignore question group, create a new long table with fixed columns for big-5 personality and holistic score.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).
+```{r to_long}
+one_gp <- function(idx.A, idx.E, idx.C, idx.S, idx.O, idx.holistic) {
+  gp <- dt %>%
+  select(c(1, 2, idx.A, idx.E, idx.C, idx.S, idx.O, idx.holistic)) %>%
+  na.omit() %>%
+  setNames(.,
+  c(
+  "rater",
+  "vid",
+  "ps.Agreeable",
+  "ps.Extraversion",
+  "ps.Consci",
+  "ps.EmStability",
+  "ps.Openess",
+  "holistic"
+  ))
+  gp
+}
+
+# Since survey didn't organize questions in an order, have to re-arrange for each question type.
+gp1 <- one_gp(4,8,5,6,7,9)
+gp2 <- one_gp(12,10,14,11,13,15)
+gp3 <- one_gp(16,17,18,19,20,21)
+gp4 <- one_gp(23,22,24,25,26,27 )
+
+all_tb <- rbind(gp1, gp2, gp3, gp4) %>%
+  mutate(rater = tolower(rater))
+
+```
+
+A function to tidy vid column to the format "t\d+_v\d+".
+
+```{r tidy_vid}
+# a function to tidy vid
+tidy_vid <- function(x){
+  x <- str_to_lower(x)
+  vid_pt <- "\\w?(\\d+)_\\w?(\\d+)"
+  tks <- str_match(x, vid_pt)
+  vid2 <- paste('t', tks[2], '_v', tks[3], sep="")
+  vid2
+
+}
+```
+
+For each rating, generate corresponding wide tibble to check inter-rater reliability
+
+```{r inter-rater}
+one_score <- function(score_name) {
+  all_tb <- all_tb %>%
+  mutate(vid = lapply(vid, tidy_vid))
+  
+  one_tb <- all_tb %>%
+  select_(.dots = c('rater', 'vid', score_name))
+  # for duplicated inputs, just keep one.
+  one_tb <- one_tb[!duplicated(one_tb[, c("rater", "vid")]), ] %>%
+    spread(key = rater, value = holistic)
+  one_tb
+
+}
+
+holistic <- one_score('holistic')
+head(holistic)
+```
+
+
+

@@ -26,3 +26,5 @@ vignettes/*.pdf
 hscore
 
 *.html
+
+data_reader.nb.html

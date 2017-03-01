@@ -62,7 +62,7 @@ tidy_vid <- function(x){
   x <- str_to_lower(x)
   vid_pt <- "\\w?(\\d+)_\\w?(\\d+)"
   tks <- str_match(x, vid_pt)
-  vid2 <- paste('t', tks[2], '_v', tks[3], sep="")
+  vid2 <- paste0('t', tks[2], '_v', tks[3])
   vid2
 
 }
@@ -78,14 +78,19 @@ one_score <- function(score_name) {
   one_tb <- all_tb %>%
   select_(.dots = c('rater', 'vid', score_name))
   # for duplicated inputs, just keep one.
+  # using spread_ based on quoted column names.
   one_tb <- one_tb[!duplicated(one_tb[, c("rater", "vid")]), ] %>%
-    spread(key = rater, value = holistic)
+    spread_(key_col = 'rater', value_col = score_name)
   one_tb
 
 }
 
+agreeable <- one_score('ps.Agreeable')
+extraversion <- one_score('ps.Extraversion')
+consci <- one_score('ps.Consci')
+emstability <- one_score('ps.EmStability')
+openess <- one_score('ps.Openess')
 holistic <- one_score('holistic')
-head(holistic)
 ```
 
 

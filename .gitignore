@@ -28,3 +28,5 @@ hscore
 *.html
 
 data_reader.nb.html
+
+*.RData

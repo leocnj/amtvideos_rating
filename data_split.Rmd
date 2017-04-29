@@ -6,10 +6,6 @@ output: html_notebook
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(magrittr)
-library(dplyr)
-library(stringr)
-library(tidyr)
-library(ggplot2)
 ```
 
 Load holistic score tibble from RData. Tidy data by rename and convert scores from chr to numeric 
@@ -48,7 +44,7 @@ amt_hs <- amt_hs %>%
   mutate(turk = lapply(vid, obt_turk)) %>%
   mutate(turk = unlist(turk))
 
-amt_hs
+head(amt_hs)
 
 ```
 

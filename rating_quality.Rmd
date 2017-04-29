@@ -1,0 +1,122 @@
+---
+title: "Rating quality analysis"
+output: html_notebook
+---
+```{r}
+library(tidyverse)
+library(magrittr)
+library(irr)
+```
+
+Note that we used the following parameters when computing Intra-Class Correlation (ICC).
+```{r}
+my.icc <- function(mx){
+  icc <- icc(mx, model="twoway", type="consistency", unit="average")
+  icc$value
+  
+}
+
+cor.min <- function(mx){
+  mean_col <- rowMeans(mx, na.rm = T)
+  cors <- cor(mx, y=mean_col, use = "complete.obs")
+  min(cors)
+  
+}
+cor.max <- function(mx){
+  mean_col <- rowMeans(mx, na.rm = T)
+  cors <- cor(mx, y=mean_col, use = "complete.obs")
+  max(cors)
+  
+}
+cor.ave <- function(mx){
+  mean_col <- rowMeans(mx, na.rm = T)
+  cors <- cor(mx, y=mean_col, use = "complete.obs")
+  mean(cors)
+  
+}
+
+
+```
+
+On AMT video data set, compute ICC and meancor among holistic ratings (n=5)
+
+```{r, echo=FALSE, eval=T, results='asis'}
+obt_irr <- function(x){
+  out <- x %>%
+    na.omit() %>%
+    select(catherinehutches:sosnajoseph) %>%
+    mutate_each(funs(as.numeric)) %>%
+    summarise(
+    icc = my.icc(
+    cbind(
+    catherinehutches,
+    debradodd,
+    laurenbell16,
+    nicolemay,
+    sosnajoseph
+    )
+    ),
+    r_min = cor.min(
+    cbind(
+    catherinehutches,
+    debradodd,
+    laurenbell16,
+    nicolemay,
+    sosnajoseph
+    )
+    ),
+    r_max = cor.max(
+    cbind(
+    catherinehutches,
+    debradodd,
+    laurenbell16,
+    nicolemay,
+    sosnajoseph
+    )
+    ),
+    r_ave = cor.ave(
+    cbind(
+    catherinehutches,
+    debradodd,
+    laurenbell16,
+    nicolemay,
+    sosnajoseph
+    )
+    )
+   )
+  out
+  
+}
+```
+
+Holistic
+
+4/29 Note, following following running order
+- data_reader.Rmd to load data
+- data_split.Rmd to filter responses that cannot be recognized and with
+  human rating issue. obtain resp_train_lst and resp_test_lst
+- for each rating df, ONLY pick responses in (resp_train|test_lst)
+
+```{r, echo=FALSE, eval=T, results='asis'}
+to_use = rbind(resp_train_lst, resp_test_lst)$vid
+
+in_expm <- function(x){
+  x_in_expm <- x %>%
+  mutate(vid = unlist(vid)) %>%
+  mutate(in_expm = vid %in% to_use) %>%
+  filter(in_expm == T)
+  show(dim(x_in_expm))
+  x_in_expm
+
+}
+obt_irr(in_expm(holistic))
+```
+
+Personality Traits:
+```{r, echo=FALSE, eval=T, results='asis'}
+obt_irr(in_expm(agreeable))
+obt_irr(in_expm(extraversion))
+obt_irr(in_expm(consci))
+obt_irr(in_expm(emstability))
+obt_irr(in_expm(openess))
+```

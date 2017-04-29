@@ -30,3 +30,7 @@ hscore
 data_reader.nb.html
 
 *.RData
+
+*.tsv
+
+*.meta

@@ -6,6 +6,7 @@ output: html_notebook
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(magrittr)
+library(stringr)
 ```
 
 Load holistic score tibble from RData. Tidy data by rename and convert scores from chr to numeric 
@@ -21,7 +22,8 @@ obt_turk <- function(x){
 
 }
 
-amt_hs <- holistic %>%
+do_tidy <- function(df_in){ 
+  out <- df_in %>%
   rename(r_ch=catherinehutches) %>%
   rename(r_db=debradodd) %>%
   rename(r_lb=laurenbell16) %>%
@@ -32,34 +34,66 @@ amt_hs <- holistic %>%
   mutate(r_db = as.numeric(r_db)) %>%
   mutate(r_lb = as.numeric(r_lb)) %>%
   mutate(r_nm = as.numeric(r_nm)) %>%
-  mutate(r_sj = as.numeric(r_sj)) 
-```
-
-Compute row mean from 5 individual raters' scores. Also, parse vid to obtain turk ID
-
-```{r}
-amt_hs <- amt_hs %>%
+  mutate(r_sj = as.numeric(r_sj)) %>% 
   mutate(final = rowMeans(select(., starts_with("r_")), na.rm = T))%>%
-  select(vid, final) %>%
+  select(vid, r_ch, r_db, r_lb, r_nm, r_sj, final) %>%
   mutate(turk = lapply(vid, obt_turk)) %>%
   mutate(turk = unlist(turk))
+  out
+}
+```
 
-head(amt_hs)
+Use do_tidy() to process six human rating data frames
 
+```{r}
+amt_hs <- do_tidy(holistic)
+amt_ag <- do_tidy(agreeable)
+amt_ex <- do_tidy(extraversion)
+amt_co <- do_tidy(consci)
+amt_em <- do_tidy(emstability)
+amt_op <- do_tidy(openess)
+```
+
+Only keep responses with ASR outputs
+```{r response_list}
+# a function to split ASR file name into id and turk
+obt_id <- function(x){
+  vid_pt <- "SELTCAWRS_(t\\d+_v\\d+)\\.md"
+  tks <- str_match(x, vid_pt)
+  tks[2] # id
+
+}
+asr <- read.table('ibm_asr.lst') %>%
+  mutate(vid = lapply(V1, obt_id))
+
+amt_hs_asr <- merge(amt_hs, asr, by='vid')
+amt_ag_asr <- merge(amt_ag, asr, by='vid')
+amt_ex_asr <- merge(amt_ex, asr, by='vid')
+amt_co_asr <- merge(amt_co, asr, by='vid')
+amt_em_asr <- merge(amt_em, asr, by='vid')
+amt_op_asr <- merge(amt_op, asr, by='vid')
+
+amt_mean_all <- data.frame(vid=amt_hs_asr$vid,
+                           hs=amt_hs_asr$final,
+                           ag=amt_ag_asr$final,
+                           ex=amt_ex_asr$final,
+                           co=amt_co_asr$final,
+                           em=amt_em_asr$final,
+                           op=amt_op_asr$final,
+                           turk=amt_hs_asr$turk)
 ```
 
 Compute turk level mean of final scores.
 ```{r per_turk}
-turk_hs <- amt_hs %>%
+turk_hs <- amt_mean_all %>%
   group_by(turk) %>% 
-  summarise(cnt = n(), turk_mean = mean(final)) %>%
-  filter(cnt > 5)  # remove turks with only a few responses.
+  summarise(cnt = n(), turk_mean = mean(hs))
+#%>%
+#  filter(cnt > 5)  # remove turks with only a few responses.
 
 summary(turk_hs$turk_mean)
-
 plot <- ggplot(turk_hs, aes(turk_mean)) +
   geom_histogram()
-
 show(plot)
 ```
 
@@ -73,36 +107,20 @@ test <-turk_hs[-intrain,]
 summary(test$turk_mean)
 plot <- ggplot(test, aes(turk_mean)) +
   geom_histogram()
-
 show(plot)
 ```
 
-Based on turk split plan, generate response level train and test list files. Need check ASR outputs (ibm_asr.lst) since several responses cannot be recognized.
-
-```{r response_list}
-# a function to split ASR file name into id and turk
-obt_id <- function(x){
-  vid_pt <- "SELTCAWRS_(t\\d+_v\\d+)\\.md"
-  tks <- str_match(x, vid_pt)
-  tks[2] # id
-
-}
-
-asr <- read.table('ibm_asr.lst') %>%
-  mutate(vid = lapply(V1, obt_id))
-
-# merge asr w/ amt_hs
-amt_hs_asr <- merge(amt_hs, asr, by="vid")
-
-resp_train_lst <- amt_hs_asr %>%
+Based on turk split plan, generate response level train and test list files.
+```{r}
+resp_train_lst <- amt_mean_all %>%
   filter(turk %in% train$turk)
-resp_test_lst <- amt_hs_asr %>%
+resp_test_lst <- amt_mean_all %>%
   filter(turk %in% test$turk)
 
 # a function to save vid and final score 
 save_lst <- function(tbl, csvFile){
   out <- tbl %>%
-    select(vid, final) %>%
+    select(vid:op) %>%
     mutate(vid = paste0("SELTCAWRS_", vid))
   write.csv(out, file=csvFile, row.names = F)
 }
